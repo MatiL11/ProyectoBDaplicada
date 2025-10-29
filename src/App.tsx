@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import './App.css';
 
 function App() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
     // Verificar si hay una sesión activa
@@ -48,8 +50,10 @@ function App() {
     <div className="App">
       {user ? (
         <DashboardPage />
+      ) : showRegister ? (
+        <RegisterPage onTogglePage={() => setShowRegister(false)} />
       ) : (
-        <LoginPage />
+        <LoginPage onTogglePage={() => setShowRegister(true)} />
       )}
     </div>
   );
