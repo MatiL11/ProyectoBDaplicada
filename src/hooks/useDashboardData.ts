@@ -57,14 +57,24 @@ export const useDashboardData = () => {
           // Para cada sucursal, calcular ventas totales
           const sucursalesConVentas = await Promise.all(
             (sucursalesData || []).map(async (sucursal) => {
-              const { data: ventasData, error: ventasError } = await supabase
-                .from('ventas')
-                .select('total')
-                .eq('id_sucursal', sucursal.id_sucursal);
+          const { data: ventasData, error: ventasError } = await supabase
+            .from('ventas')
+            .select(`
+              id_producto,
+              cantidad,
+              productos (
+                precio
+              )
+            `)
+            .eq('id_sucursal', sucursal.id_sucursal);
 
               if (ventasError) throw ventasError;
 
-              const totalVentas = ventasData?.reduce((sum, venta) => sum + venta.total, 0) || 0;
+              const totalVentas = ventasData?.reduce((sum, venta: any) => {
+                const precio = venta.productos?.precio ?? 0;
+                const cantidad = venta.cantidad ?? 0;
+                return sum + cantidad * precio;
+              }, 0) || 0;
 
               return {
                 ...sucursal,
@@ -116,7 +126,6 @@ export const useDashboardData = () => {
         .select(`
           id_producto,
           cantidad,
-          total,
           productos (
             id_producto,
             nombre,
@@ -129,7 +138,11 @@ export const useDashboardData = () => {
       if (ventasError) throw ventasError;
 
       // Calcular total de ventas de la sucursal
-      const totalVentas = ventasData?.reduce((sum, venta) => sum + venta.total, 0) || 0;
+      const totalVentas = ventasData?.reduce((sum, venta: any) => {
+        const cantidad = venta.cantidad ?? 0;
+        const precio = venta.productos?.precio ?? 0;
+        return sum + cantidad * precio;
+      }, 0) || 0;
 
       // Agrupar productos y calcular totales
       const productosAgrupados = ventasData?.reduce((acc: any, venta: any) => {
@@ -144,8 +157,10 @@ export const useDashboardData = () => {
             cantidad_vendida: 0
           };
         }
-        acc[producto.id_producto].total_ventas += venta.total;
-        acc[producto.id_producto].cantidad_vendida += venta.cantidad;
+        const cantidad = venta.cantidad ?? 0;
+        const totalCalculado = cantidad * (producto.precio ?? 0);
+        acc[producto.id_producto].total_ventas += totalCalculado;
+        acc[producto.id_producto].cantidad_vendida += cantidad;
         return acc;
       }, {});
 
@@ -200,8 +215,8 @@ export const useDashboardData = () => {
         };
       }
 
-      const totalVentas = ventasData.reduce((sum, venta) => sum + venta.total, 0);
-      const cantidadVendida = ventasData.reduce((sum, venta) => sum + venta.cantidad, 0);
+      const cantidadVendida = ventasData.reduce((sum, venta) => sum + (venta.cantidad ?? 0), 0);
+      const totalVentas = cantidadVendida * (productoData?.precio ?? 0);
 
       return {
         ...productoData,
